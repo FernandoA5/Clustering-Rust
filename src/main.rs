@@ -1,4 +1,4 @@
-use std::{usize, vec};
+use std::{process::exit, usize};
 
 #[derive(Debug, Clone)]
 struct Vector {
@@ -19,10 +19,11 @@ struct Solución {
     coor_centros: Vec<Centro>,
 }
 
-const FILENAME: &str = "km.csv";
+const FILENAME: &str = "km_lab.csv";
 const PATH: &str = "src/";
 const SOL_PATH: &str = "src/sol/";
 const VERBOSE: bool = true;
+const MEDOIDES: bool = true;
 
 fn main() {
     //LEEMOS EL ARCHIVO
@@ -52,8 +53,7 @@ fn main() {
     }
 
     //APLICAMOS LA NORMALIZACIÓN
-    let mut data_norm:Vec<Vector> = Vec::new();
-    data_norm = normalization(&data, &minimos, &maximos);
+    let data_norm:Vec<Vector> = normalization(&data, &minimos, &maximos);
     println!("");
     println!("-----------------------Datos normalizados:---------------------------"); //TODELETE
     for (_i, v) in data_norm.iter().enumerate() {
@@ -62,7 +62,7 @@ fn main() {
 
     //----------------------------CALCULOS----------------------------
     //Para N centros desde 2 hasta N
-    let mut sol_anterior_centros:f64 = 0.0;
+    let mut sol_anterior_centros:f64;
     let mut sol_centros: f64 = 0.0;
     let mut n: usize = 2;
     let mut cont_iter_centros: usize = 2;
@@ -78,7 +78,7 @@ fn main() {
         let mut end_iter_iterations: bool = false;
 
         //ITERACIONES DE KMEANS
-        let mut sol_anterior_kmeans: f64 = 0.0;
+        let mut sol_anterior_kmeans: f64;
         let mut sol_kmeans: f64 = 0.0;
         let mut cont_iter_kmeans: usize = 0;
         let mut centros:Vec<Centro> = Vec::new();
@@ -104,7 +104,7 @@ fn main() {
                 for i in 0..n {
                     centros.push(Centro { headers: headers.clone(), valores: Vec::new() });
                     //RECORREMOS LOS VALORES DE LOS CENTROS
-                    for (_j, _v) in data_norm.iter().enumerate() {                        
+                    for (_j, _v) in data_norm.clone().iter().enumerate() {                        
                         let val = (1.0 / (n-1) as f64) * i as f64;
                         centros[i].valores.push(val);
                     }
@@ -118,7 +118,7 @@ fn main() {
             }
             
             //Calculamos la distancia de cada punto a cada centro
-            let distancias: Vec<Vec<f64>> = get_distancias_euclideanas(&data_norm, &centros, n, cont_iter_kmeans);
+            let distancias: Vec<Vec<f64>> = get_distancias_euclideanas(data_norm.clone(), &centros, n, cont_iter_kmeans);
             if VERBOSE{
                 println!("");
                 println!("-----------------------Distancias {n}-{cont_iter_kmeans}:---------------------------"); //TODELETE
@@ -156,7 +156,16 @@ fn main() {
             }
 
             //SETTEAMOS LOS NUEVOS CENTROS
-            let nuevos_centros: Vec<Centro> = get_nuevos_centros(&data_norm, &vec_pertenencia_datos_centros, &centros, &headers);
+            let mut nuevos_centros: Vec<Centro> = get_nuevos_centros(&data_norm, &vec_pertenencia_datos_centros.clone(), &centros, headers.clone());
+
+            // IF MEDOIDES: TOMAMOS LOS NUEVOS CENTROS Y LOS MANDAMOS A MEDOIDES
+            if MEDOIDES {
+                nuevos_centros = get_centros_medoides(nuevos_centros, data_norm.clone(), vec_pertenencia_datos_centros.clone(), headers.clone());
+            }
+                //EL RESULTADO REESCRIBIRÁ LOS NUEVOS CENTROS
+            // exit(0);
+            //IF NO MEDOIDOES: CONTINUAMOS CON LOS NUEVOS CENTROS 
+
             
             //ACTUALIZAMOS LA SOLUCIÓN DE LAS ITERACIONES
             sol_kmeans = suma_dist_min;
@@ -228,11 +237,53 @@ fn main() {
 
 }
 
+// nuevos_centros = get_centros_medoides(nuevos_centros, data_norm, vec_pertenencia_datos_centros, headers);
+fn get_centros_medoides(nuevos_centros: Vec<Centro>, 
+    data_norm: Vec<Vector>, 
+    vec_pertenencia_datos_centros: Vec<Vec<u8>>, 
+    headers: Vec<String>) -> Vec<Centro> {
+
+    let mut medoides: Vec<Centro> = Vec::new();
+
+    //OBTENEMOS LAS DISTANCIAS DE LOS DATOS A LOS CENTROS
+    let distancias_centros: Vec<Vec<f64>> = get_distancias_euclideanas(data_norm.clone(), &nuevos_centros, nuevos_centros.len(), 0);
+
+    // println!("\n Distancias: {:?}", distancias_centros); //TODELETE
+
+    //RECORREMOS LOS CENTROS
+    for i_centro in 0..nuevos_centros.len() {
+        //BUSCAMOS EL MÍNIMO DE LAS DISTANCIAS DE LOS DATOS A LOS CENTROS
+        let mut min: f64 = f64::INFINITY;
+        let mut index: usize = 0;
+
+        for (i, v) in distancias_centros[i_centro].iter().enumerate() {
+            // if *v < min  && vec_pertenencia_datos_centros[i_centro][i] == 1{
+            if *v < min{
+                min = *v;
+                index = i;
+            }
+        }
+        //GUARDAMOS EL MEDOIDE
+        let mut coor_medoides: Vec<f64> = Vec::new();
+        for i in 0..data_norm.len() {
+            coor_medoides.push(data_norm[i].data[index]);
+        }
+
+        medoides.push(Centro { headers: headers.clone(), valores: coor_medoides});
+    }
+    //IMPRIMIMOS LOS MEDOIDES
+    println!("");
+    println!("-----------------------Medoides:---------------------------"); //TODELETE
+    for (i, v) in medoides.iter().enumerate() {
+        println!("Medoide {}: {:?}", i, v.valores); //TODELETE
+    }
+
+    medoides
+}
 
 
 
-
-fn get_nuevos_centros(data_norm: &Vec<Vector>, vec_pertenencia_datos_centros: &Vec<Vec<u8>>, centros: &Vec<Centro>, headers: &Vec<String>) -> Vec<Centro> {
+fn get_nuevos_centros(data_norm: &Vec<Vector>, vec_pertenencia_datos_centros: &Vec<Vec<u8>>, centros: &Vec<Centro>, headers: Vec<String>) -> Vec<Centro> {
     let mut nuevos_centros: Vec<Centro> = Vec::new();
     //RECORREMOS LOS CENTROS
     for i_centros in 0..centros.len() {
@@ -273,7 +324,7 @@ fn get_pertenencia_datos_centros(distancias: &Vec<Vec<f64>>, dist_min: &Vec<f64>
     vec_pertenencia_datos_centros
 }
 
-fn get_distancias_euclideanas(data_norm: &Vec<Vector>, centros: &Vec<Centro>, _n:usize, _i: usize)-> Vec<Vec<f64>>{
+fn get_distancias_euclideanas(data_norm: Vec<Vector>, centros: &Vec<Centro>, _n:usize, _i: usize)-> Vec<Vec<f64>>{
     let mut distancias: Vec<Vec<f64>> = Vec::new();
     //RECORREMOS LOS CENTROS
     
