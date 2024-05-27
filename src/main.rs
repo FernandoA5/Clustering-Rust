@@ -23,7 +23,7 @@ const FILENAME: &str = "km_lab.csv";
 const PATH: &str = "src/";
 const SOL_PATH: &str = "src/sol/";
 const VERBOSE: bool = true;
-const MEDOIDES: bool = true;
+const MEDOIDES: bool = false;
 
 fn main() {
     //LEEMOS EL ARCHIVO
@@ -237,6 +237,8 @@ fn main() {
 
 }
 
+
+//HAY QUE HACER QUE EL CENTRO APARENTE FORME PARTE DE LOS MEDOIDES (UN PUSH)
 // nuevos_centros = get_centros_medoides(nuevos_centros, data_norm, vec_pertenencia_datos_centros, headers);
 fn get_centros_medoides(nuevos_centros: Vec<Centro>, 
     data_norm: Vec<Vector>, 
