@@ -31,14 +31,21 @@ fn main() {
     let mut data:Vec<Vector> = Vec::new();
     read_csv(&mut data, &mut headers, format!("{}{}", PATH, FILENAME).as_str());
 
-    // println!("Headers: {:?}", headers); //TODELETE
-    // println!("Data: {:?}", data); //TODELETE
+
+    //ARCHIVO DE SALIDA (EL NOMBRE DEL ARCHIVO USARÁ EL NOMBRE DEL DATASET + FECHA Y HORA DE EJECUCIÓN)
+    let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+    //EXTRAEMOS EL NOMBRE DEL DATASET
+    let dataset_name = PATH.split("/").last().unwrap().split(".").next().unwrap();
+    let output_file = format!("src/{}_{}.txt", dataset_name, timestamp);
 
     let (minimos, maximos) = minimos_maximos(&data);
     
     println!("-----------------------Minimos y maximos:---------------------------"); //TODELETE
+    write_to_file(&format!("-----------------------Minimos y maximos:---------------------------\n"), &output_file);
+
     for (i, v) in data.iter().enumerate() {
         println!("{}: Min: {}, Max: {}", v.header, minimos[i], maximos[i]); //TODELETE
+        write_to_file(&format!("{}: Min: {}, Max: {}\n", v.header, minimos[i], maximos[i]), &output_file);
     }
 
     //NORMALIZAMOS LOS DATOS
@@ -48,16 +55,20 @@ fn main() {
     
     println!("");
     println!("-----------------------M y B:---------------------------"); //TODELETE
+    write_to_file(&format!("-----------------------M y B:---------------------------\n"), &output_file);
     for (i, v) in data.iter().enumerate() {
         println!("{}: m: {}, b: {}", v.header, m[i], b[i]); //TODELETE
+        write_to_file(&format!("{}: m: {}, b: {}\n", v.header, m[i], b[i]), &output_file);
     }
 
     //APLICAMOS LA NORMALIZACIÓN
     let data_norm:Vec<Vector> = normalization(&data, &minimos, &maximos);
     println!("");
     println!("-----------------------Datos normalizados:---------------------------"); //TODELETE
+    write_to_file(&format!("-----------------------Datos normalizados:---------------------------\n"), &output_file);
     for (_i, v) in data_norm.iter().enumerate() {
         println!("{}: {:?}", v.header, v.data); //TODELETE
+        write_to_file(&format!("{}: {:?}\n", v.header, v.data), &output_file);
     }
 
     //----------------------------CALCULOS----------------------------
@@ -89,12 +100,14 @@ fn main() {
 
             if VERBOSE {
                 println!("\n\n------------------------Centros {cont_iter_centros}:---------------------------"); //TODELETE
+                write_to_file(&format!("\n\n------------------------Centros {cont_iter_centros}:---------------------------\n", cont_iter_centros=cont_iter_centros), &output_file);
             }
 
             sol_anterior_kmeans = sol_kmeans;
             // println!(""); //TODELETE    
             if VERBOSE {
                 println!("---------Iteración: {cont_iter_kmeans}--------------"); //TODELETE
+                write_to_file(&format!("---------Iteración: {cont_iter_kmeans}--------------\n", cont_iter_kmeans=cont_iter_kmeans), &output_file);
             }
 
             //CENTROS
@@ -114,6 +127,7 @@ fn main() {
             if VERBOSE {
                 for (i, v) in centros.iter().enumerate() {
                     println!("Centro {}: {:?}", i, v.valores); //TODELETE
+                    write_to_file(&format!("Centro {}: {:?}\n", i, v.valores), &output_file);
                 }    
             }
             
@@ -121,9 +135,12 @@ fn main() {
             let distancias: Vec<Vec<f64>> = get_distancias_euclideanas(data_norm.clone(), &centros, n, cont_iter_kmeans);
             if VERBOSE{
                 println!("");
+                write_to_file(&format!("\n"), &output_file);
                 println!("-----------------------Distancias {n}-{cont_iter_kmeans}:---------------------------"); //TODELETE
+                write_to_file(&format!("-----------------------Distancias {n}-{cont_iter_kmeans}:---------------------------\n", n=n, cont_iter_kmeans=cont_iter_kmeans), &output_file);
                 for (i, v) in distancias.iter().enumerate() {
                     println!("Centro {}:  {:?}", i, v); //TODELETE
+                    write_to_file(&format!("Centro {}:  {:?}\n", i, v), &output_file);
                 }
             }
 
@@ -132,7 +149,9 @@ fn main() {
             if VERBOSE {
                 println!("");
                 println!("-----------------------Distancia minima {n}-{cont_iter_kmeans}:---------------------------"); //TODELETE
+                write_to_file(&format!("-----------------------Distancia minima {n}-{cont_iter_kmeans}:---------------------------\n", n=n, cont_iter_kmeans=cont_iter_kmeans), &output_file);
                 println!("{:?}", dist_min); //TODELETE
+                write_to_file(&format!("{:?}\n", dist_min), &output_file);
             }
 
             //SUMA DE DISTANCIAS MINIMAS
@@ -140,7 +159,9 @@ fn main() {
             if VERBOSE {
                 println!("");
                 println!("-----------------------Suma de distancias minimas {n}-{cont_iter_kmeans}:---------------------------"); //TODELETE
+                write_to_file(&format!("-----------------------Suma de distancias minimas {n}-{cont_iter_kmeans}:---------------------------\n", n=n, cont_iter_kmeans=cont_iter_kmeans), &output_file);
                 println!("{}", suma_dist_min); //TODELETE
+                write_to_file(&format!("{}\n", suma_dist_min), &output_file);
             }
 
             //CATEGORIZAMOS LOS DATOS EN UN CENTRO
@@ -149,9 +170,11 @@ fn main() {
             if VERBOSE {
                 println!("");
                 println!("-----------------------Pertenencia de los datos a los centros {n}-{cont_iter_kmeans}:---------------------------"); //TODELETE
+                write_to_file(&format!("-----------------------Pertenencia de los datos a los centros {n}-{cont_iter_kmeans}:---------------------------\n", n=n, cont_iter_kmeans=cont_iter_kmeans), &output_file);
                 for (i, v) in vec_pertenencia_datos_centros.iter().enumerate() {
                     let sum: u8 = v.iter().sum();
                     println!("Centro {}: {:?}. Sum: {sum}", i, v); //TODELETE
+                    write_to_file(&format!("Centro {}: {:?}. Sum: {sum}\n", i, v, sum=sum), &output_file);
                 }
             }
 
@@ -160,7 +183,7 @@ fn main() {
 
             // IF MEDOIDES: TOMAMOS LOS NUEVOS CENTROS Y LOS MANDAMOS A MEDOIDES
             if MEDOIDES {
-                nuevos_centros = get_centros_medoides(nuevos_centros, data_norm.clone(), vec_pertenencia_datos_centros.clone(), headers.clone());
+                nuevos_centros = get_centros_medoides(nuevos_centros, data_norm.clone(), vec_pertenencia_datos_centros.clone(), headers.clone(), &output_file);
             }
                 //EL RESULTADO REESCRIBIRÁ LOS NUEVOS CENTROS
             // exit(0);
@@ -180,8 +203,10 @@ fn main() {
                 //IMPRIMIMOS LOS NUEVOS CENTROS
                 if VERBOSE{
                     println!("-----------------------Nuevos centros {n}-{cont_iter_kmeans}:---------------------------"); //TODELETE
+                    write_to_file(&format!("-----------------------Nuevos centros {n}-{cont_iter_kmeans}:---------------------------\n", n=n, cont_iter_kmeans=cont_iter_kmeans), &output_file);
                     for (i, v) in nuevos_centros.iter().enumerate() {
                         println!("Centro {}: {:?}", i, v.valores); //TODELETE
+                        write_to_file(&format!("Centro {}: {:?}\n", i, v.valores), &output_file);
                     }
                 }
 
@@ -220,17 +245,22 @@ fn main() {
 
     //IMPRIMIMOS LA SOLUCIÓN FINAL
     println!("");
+    write_to_file(&format!("\n"), &output_file);
     println!("-----------------------Soluciones:---------------------------"); //TODELETE
+    write_to_file(&format!("-----------------------Soluciones:---------------------------\n"), &output_file);
     for (i, v) in soluciones.iter().enumerate() {
         println!("\nSolución {}: Centros: {}, Distancias: {}, Iteraciones: {}", i, v.centros, v.distancias, v.iteraciones); //TODELETE
+        write_to_file(&format!("\nSolución {}: Centros: {}, Distancias: {}, Iteraciones: {}\n", i, v.centros, v.distancias, v.iteraciones), &output_file);
         //Vemos los centros
         for (j, _v) in v.coor_centros.iter().enumerate() {
             println!("Centro {}: {:?}", j, _v.valores); //TODELETE
+            write_to_file(&format!("Centro {}: {:?}\n", j, _v.valores), &output_file);
         }
         //Vemos la pertenencia de los datos a los centros
         for (j, _v) in v.vec_pertenencia_datos_centros.iter().enumerate() {
             let sum: u8 = _v.iter().sum();
             println!("Items en Centro {}: {:?}. Sum: {sum}", j, _v); //TODELETE
+            write_to_file(&format!("Items en Centro {}: {:?}. Sum: {sum}\n", j, _v, sum=sum), &output_file);
         }
     }
 
@@ -243,7 +273,9 @@ fn main() {
 fn get_centros_medoides(nuevos_centros: Vec<Centro>, 
     data_norm: Vec<Vector>, 
     vec_pertenencia_datos_centros: Vec<Vec<u8>>, 
-    headers: Vec<String>) -> Vec<Centro> {
+    headers: Vec<String>,
+    output_file: &str
+) -> Vec<Centro> {
 
     let mut medoides: Vec<Centro> = Vec::new();
 
@@ -275,9 +307,12 @@ fn get_centros_medoides(nuevos_centros: Vec<Centro>,
     }
     //IMPRIMIMOS LOS MEDOIDES
     println!("");
+    write_to_file(&format!("\n"), output_file);
     println!("-----------------------Medoides:---------------------------"); //TODELETE
+    write_to_file(&format!("-----------------------Medoides:---------------------------\n"), output_file);
     for (i, v) in medoides.iter().enumerate() {
         println!("Medoide {}: {:?}", i, v.valores); //TODELETE
+        write_to_file(&format!("Medoide {}: {:?}\n", i, v.valores), output_file);
     }
 
     medoides
@@ -436,4 +471,20 @@ fn read_csv(data: &mut Vec<Vector>, headers: &mut Vec<String>, path: &str) {
             data[j].data.push(col.parse::<f64>().unwrap());
         }
     }
+}
+
+
+//FUNCIÓN QUE RECIBE UNA CADENA DE TEXTO Y LA ESCRIBE AL FINAL DE UN ARCHIVO, LO CREA SI NO EXISTE
+fn write_to_file(text: &str, path: &str) {
+    use std::fs::OpenOptions;
+    use std::io::Write;
+
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(true)
+        .open(path)
+        .unwrap();
+
+    file.write_all(text.as_bytes()).unwrap();
 }
